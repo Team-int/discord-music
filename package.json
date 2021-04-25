@@ -1,0 +1,15 @@
+{
+  "name": "discord-music",
+  "version": "1.0.0",
+  "description": "simple discord music bot core",
+  "main": "index.js",
+  "repository": "https://github.com/sujang958/discord-music.git",
+  "author": "sujang958 <enter7377@naver.com>",
+  "license": "MIT",
+  "dependencies": {
+    "discord.js": "^12.5.3",
+    "youtube-sr": "^4.0.4",
+    "ytdl-core-discord": "^1.3.0"
+  },
+  "type": "module"
+}
