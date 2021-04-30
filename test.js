@@ -1,6 +1,6 @@
 const Music = require('./src/index').default;
 const Discord = require('discord.js');
-
+require("dotenv").config()
 const client = new Discord.Client();
 
 const music = new Music();
@@ -20,4 +20,4 @@ music.on('play', info => {
 
 
 
-client.login('ODA2Nzk3NDgwODA4Njc3Mzg2.YBuqtA.T5nukgsXjCVIiNzj_cCahAeU7d8')
+client.login(process.env.TOKEN)
