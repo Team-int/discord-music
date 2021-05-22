@@ -1,103 +1,97 @@
-import * as youtubeSr from 'youtube-sr';
-import * as Discord from 'discord.js';
-import ytdl from 'ytdl-core-discord';
-import { EventEmitter } from 'events';
+const { EventEmitter } = require('events')
+const Youtube = require('youtube-sr').default
+const ytdl = require('ytdl-core-discord')
+const move = require('./util/move.js')
 
-export default class {
-    constructor() {
-        const event = new EventEmitter();
-        this.on = event.on;
-        this.emit = event.emit;
-        this.queue = new Map();
-    }
+class MusicPlayer extends EventEmitter {
+  constructor() {
+    super()
+    this.queue = new Map()
+  }
 
-    /**
-     * Play music
-     * @param {String} query 
-     * @param {Discord.Message} message 
+  /**
+     * Add music to queue
+     * @param {import('discord.js').Message} message 
+     * @param {string} query 
      */
-    async play(query, message) {
-        let srResult = await youtubeSr.default.searchOne(query, "video", true);
-
-
-        if (!this.queue.has(message.guild.id))
-            this.initGuildQueue(message);
+  async add(message, query) {
+    if (!message?.member?.voice?.channel)   throw new Error('First, you should join to voice channel')
+    if (!this.queue.has(message.guild.id))   this._initGuildQueue(message)
         
-        /**
-         * @type {import('../typings/index').guildQueue}
-         */
-        let guildQueue = this.queue.get(message.guild.id);
-        guildQueue.onListen = true;
+    const result = await Youtube.searchOne(query, 'video')
+    let queue = this.queue.get(message.guild.id)
+    let item = {
+      title: result.title,
+      url: result.url,
+      thumbnail_img: result.thumbnail.displayThumbnailURL(),
+      length: result.durationFormatted
+    }
+
+    queue.musics.push(item)
+
+    this.emit('add', queue.textChannel, item)
+  }
+
+  /**
+     * Play queue
+     * @param {import('discord.js').Message} message 
+     */
+  async play(message) {
+    if (!message?.member?.voice?.channel)   throw new Error('First, you should join to voice channel')
+    if (!this.queue.has(message.guild.id))   throw new Error('Music not found')
+    if (this.queue.get(message.guild.id).musics.length <= 0)    throw new Error('Music not found')
+
+    let queue = this.queue.get(message.guild.id)
+    let connection = await message.member.voice.channel.join()
+    let stream = await ytdl(queue.musics[0].url)
+    let dispatcher = connection.play(stream, {volume: queue.volume / 100, type: 'opus'})
+
+    queue.voiceChannel = message.member.voice.channel
+    queue.textChannel = message.channel
         
-        guildQueue.queue.push({
-            video: {
-                url: srResult.url,
-                thumbnail: srResult.thumbnail,
-            },
-            user: {
-                tag: message.author.tag,
-            }
-        });
+    dispatcher.on('start', () => this.emit('play', queue.textChannel, queue.musics[0]))
 
-        this.emit('add', guildQueue.queue[0]);
-        this.playMusic(guildQueue);
-    }
+    dispatcher.on('finish', () => {
+      this.emit('end', queue.textChannel)
+      if (queue.loop == true)
+        queue.musics = move(queue.musics, 0, -1)
+      else
+        queue.musics.shift()
+      if (!queue.musics[0])
+        this._destroyGuildQueue(message.guild.id)
+      
+      this.play(message)
+    })
+  }
 
-    /**
-     * @param {import('../typings/index').guildQueue} guildQueue 
+  /**
+     * Set volume
+     * @param {import('discord.js').Message} message 
      */
-    async playMusic(guildQueue) {
-        if (guildQueue.queue.length == 1) {
-            const stream = await ytdl(guildQueue.queue[0].video.url);
+  async volume(message, target_volume) {
+    if (!message?.member?.voice?.channel)   throw new Error('First, you should join to voice channel')
+    if (!this.queue.has(message.guild.id))   this._initGuildQueue(message)
 
-            guildQueue.dispatcher =
-            guildQueue
-            .connection
-            .play(stream, {type: "opus"});
+    let queue = this.queue.get(message.guild.id)
+    queue.volume = target_volume
 
-            this.emit('play', guildQueue.queue[0]);
+    this.emit('volumeChanged', queue.textChannel, queue.volume)
+  }
 
-            guildQueue.dispatcher.on('finish', () => {
-                if (!guildQueue.loop)
-                    guildQueue.queue.shift();
-                if (guildQueue.queue.length <= 0)
-                    this.emit('finish', guildQueue.m_channel);
-                
-                this.emit('end');
-                this.playMusic(guildQueue);
-            });
-        } else {
-            guildQueue.dispatcher.on('finish', async () => {
-                if (!guildQueue.loop)
-                    guildQueue.queue.shift();
-                if (guildQueue.queue.length <= 0)
-                    this.emit('finish', guildQueue.m_channel);
-                
-                const stream = await ytdl(guildQueue.queue[0].video.url);
-                guildQueue.dispatcher =
-                guildQueue
-                .connection
-                .play(stream, {type: "opus"});
+  _initGuildQueue(message) {
+    this.queue.set(message.guild.id, {
+      voiceChannel: message.member.voice.channel,
+      textChannel: message.channel,
+      musics: [],
+      loop: false,
+      volume: 50,
+    })
+  }
 
-                this.emit('play', guildQueue.queue[0]);
-                this.emit('end');
-                this.playMusic(guildQueue);
-            });
-        }
-    }
-
-    /**
-     * @param {Discord.Message} message 
-     */
-    async initGuildQueue(message) {
-        let guildQueue = this.queue.set(message.guild.id);
-        guildQueue = guildQueue.get(message.guild.id);
-        guildQueue.loop = false;
-        guildQueue.queue = [];
-        guildQueue.volume = 50;
-        guildQueue.onListen = false;
-        guildQueue.m_channel = message.channel;
-        guildQueue.v_channel = message.member.voice.channel;
-        guildQueue.connection = await message.member.voice.channel.join();
-    }
+  _destroyGuildQueue(id) {
+    this.emit('finish', this.queue.get(id).textChannel)
+    this.queue.delete(id)
+  }
 }
+
+module.exports = MusicPlayer
