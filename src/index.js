@@ -48,11 +48,13 @@ class MusicPlayer extends EventEmitter {
 
     queue.voiceChannel = message.member.voice.channel
     queue.textChannel = message.channel
-        
+    queue.dispatcher = dispatcher
+    
     dispatcher.on('start', () => this.emit('play', queue.textChannel, queue.musics[0]))
 
     dispatcher.on('finish', () => {
       this.emit('end', queue.textChannel)
+      queue = this.queue.get(message.guild.id)
       if (queue.loop == true)
         queue.musics = move(queue.musics, 0, -1)
       else
@@ -65,15 +67,32 @@ class MusicPlayer extends EventEmitter {
   }
 
   /**
+     * Loop.
+     * @param {import('discord.js').Message} message 
+     */
+  async loop(message) {
+    if (!message?.member?.voice?.channel)   throw new Error('First, you should join to voice channel')
+    if (!this.queue.has(message.guild.id))   this._initGuildQueue(message)
+
+    let queue = this.queue.get(message.guild.id)
+
+    if (queue.loop)
+      queue.loop = false
+    else
+      queue.loop = true
+  }
+
+  /**
      * Set volume
      * @param {import('discord.js').Message} message 
      */
   async volume(message, target_volume) {
     if (!message?.member?.voice?.channel)   throw new Error('First, you should join to voice channel')
-    if (!this.queue.has(message.guild.id))   this._initGuildQueue(message)
+    if (!this.queue.get(message.guild.id).dispatcher)   throw new Error('Please play the music')
 
     let queue = this.queue.get(message.guild.id)
     queue.volume = target_volume
+    queue.dispatcher.setVolume(queue.volume / 100)
 
     this.emit('volumeChanged', queue.textChannel, queue.volume)
   }

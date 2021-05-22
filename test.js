@@ -19,5 +19,5 @@ music.on('play', info => {
 
 
 
-client.login('')
+client.login('ODA2Nzk3NDgwODA4Njc3Mzg2.YBuqtA.n1DKPpEjLUb5PWYCfjvqKtFZjO4')
 
