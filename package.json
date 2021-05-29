@@ -2,9 +2,10 @@
   "name": "music-discord",
   "version": "1.0.0",
   "description": "simple discord music bot core",
-  "main": "src/index.js",
+  "main": "./src/index.js",
+  "types": "./typings/index.d.ts",
   "repository": "https://github.com/Team-int/discord-music.git",
-  "author": "sujang958 , TeamInt",
+  "author": "sujang958, Team-Int",
   "license": "MIT",
   "dependencies": {
     "@discordjs/opus": "^0.5.0",
