@@ -1,6 +1,6 @@
 {
   "name": "music-discord",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "simple discord music bot core",
   "main": "./src/index.js",
   "types": "./typings/index.d.ts",
