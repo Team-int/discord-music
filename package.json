@@ -1,5 +1,5 @@
 {
-  "name": "discord-music",
+  "name": "music-discord",
   "version": "1.0.0",
   "description": "simple discord music bot core",
   "main": "src/index.js",
